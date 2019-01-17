@@ -35,7 +35,6 @@ def addDataForType(session, user, domain, datatype, filename):
     try:
         response = session.post(
             url,
-            cookies=cookies,
             data=payload,
             headers=headers)
         response.raise_for_status()
@@ -68,7 +67,6 @@ def setDataLocation(session, user, domain, filepath, filename):
     try:
         response = session.post(
             url,
-            cookies=cookies,
             data=payload,
             headers=headers)
     except requests.exceptions.HTTPError as e:
@@ -94,7 +92,6 @@ def uploadData(session, user, domain, filepath):
     try:
         response = session.post(
             url,
-            cookies=cookies,
             data=payload,
             files=files)
     except requests.exceptions.HTTPError as e:
@@ -108,19 +105,44 @@ def uploadData(session, user, domain, filepath):
     return response
 
 
-def addUploadNewData(session, user, domain, filepath):
+'''
+Upload the data
+'''
+def login(session, username, password):
+    url_login = '{}/login'.format(WINGS_API_URL)
+    try:
+        response = session.get(url_login)
+    except requests.exceptions.HTTPError as e:
+        logger.exception("HTTP error {}".format(e))
+    except requests.exceptions.RequestException as e:
+        logger.exception("Connection error {}".format(e))
+
+    url_security = '{}/j_security_check'.format(WINGS_API_URL)
+    payload = {
+        'j_username': username,
+        'j_password': password
+    }
+    try:
+        response = session.post(url_security,data=payload)
+    except requests.exceptions.HTTPError as e:
+        logger.exception("HTTP error {}".format(e))
+    except requests.exceptions.RequestException as e:
+        logger.exception("Connection error {}".format(e))
+    return response
+
+
+def addUploadNewData(session, username, domain, filepath):
     datatype = "NetCDF"
     filename = getFilename(filepath)
-    addDataForType(session, user, domain, datatype, filename)
-    setDataLocation(session, user, domain, filepath, filename)
-    response = uploadData(session, user, domain, filepath)
-    print(response.text)
+    addDataForType(session, username, domain, datatype, filename)
+    setDataLocation(session, username, domain, filepath, filename)
+    response = uploadData(session, username, domain, filepath)
 
 
-
-username = 'mosorio'
+username = os.environ.get('WINGS_USERNAME')
+password = os.environ.get('WINGS_PASSWORD')
 domain = 'CompClim'
 session = requests.Session()
-cookies = {'JSESSIONID': '3053BF7F149BC18B3409D6AF99217D45'}
 filepath = "filetest.txt"
+login(session, username, password)
 addUploadNewData(session, username, domain, filepath)
